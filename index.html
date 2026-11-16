@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Place Value Exchange Chart — Primary Maths</title>
+
+  <!-- Google Fonts: Fredoka & Nunito for friendly, rounded primary school numerals -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Base typography & classroom anti-selection rules for interactive whiteboards */
+    :root {
+      --bg-classroom: #F8FAFC;
+      --border-grid: #1E293B;
+      --border-counter: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--bg-classroom);
+      color: #1E293B;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .font-display {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Classic White Rose Maths bold dark grid borders */
+    .pv-table-frame {
+      border: 2px solid #1E293B;
+      box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    }
+
+    .pv-col-divider:not(:last-child) {
+      border-right: 2px solid #1E293B;
+    }
+
+    .pv-header-divider {
+      border-bottom: 2px solid #1E293B;
+    }
+
+    .pv-footer-divider {
+      border-top: 2px solid #1E293B;
+    }
+
+    /* Tactile Place Value Counter styling */
+    .pv-counter {
+      border: 2px solid #111827;
+      border-radius: 9999px;
+      color: #FFFFFF;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        inset 0 3px 5px rgba(255, 255, 255, 0.35),
+        inset 0 -3px 5px rgba(0, 0, 0, 0.18),
+        0 3px 6px rgba(17, 24, 39, 0.22);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.16s ease, opacity 0.15s ease;
+      touch-action: none; /* Required for smooth custom pointer drag on touchscreens */
+      position: relative;
+    }
+
+    .pv-counter.can-drag {
+      cursor: grab;
+    }
+
+    .pv-counter.can-drag:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow:
+        inset 0 3px 6px rgba(255, 255, 255, 0.42),
+        inset 0 -3px 5px rgba(0, 0, 0, 0.2),
+        0 7px 14px rgba(17, 24, 39, 0.28);
+    }
+
+    .pv-counter.is-selected {
+      outline: 4px solid #0EA5E9;
+      outline-offset: 2px;
+      transform: scale(1.07);
+      z-index: 20;
+    }
+
+    .pv-counter.is-dragging-source {
+      opacity: 0.28;
+      transform: scale(0.92);
+    }
+
+    /* Pop-in animation when splitting 1 -> 10 or adding counters */
+    @keyframes counterPopIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.25) translateY(-10px);
+      }
+      70% {
+        opacity: 1;
+        transform: scale(1.12) translateY(0);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .animate-pop-in {
+      animation: counterPopIn 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    }
+
+    /* Flashing / Pulsing Header Exchange Symbol (10 -> 1) */
+    @keyframes flashExchangeBadge {
+      0%, 100% {
+        transform: scale(1);
+        background-color: #FEF08A;
+        border-color: #111827;
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.75), 0 3px 8px rgba(0, 0, 0, 0.2);
+      }
+      50% {
+        transform: scale(1.08);
+        background-color: #4ADE80;
+        border-color: #111827;
+        box-shadow: 0 0 0 8px rgba(74, 222, 128, 0), 0 5px 14px rgba(22, 163, 74, 0.35);
+      }
+    }
+
+    @keyframes nudgeLeftArrow {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      50% {
+        transform: translateX(-4px);
+      }
+    }
+
+    .exchange-flash-btn {
+      animation: flashExchangeBadge 1.15s infinite ease-in-out;
+    }
+
+    .exchange-flash-btn:hover {
+      animation-play-state: paused;
+      transform: scale(1.1);
+      background-color: #22C55E;
+      color: #FFFFFF;
+    }
+
+    .exchange-arrow-nudge {
+      display: inline-block;
+      animation: nudgeLeftArrow 0.85s infinite ease-in-out;
+    }
+
+    /* Drop zone pulse when dragging counter to immediate right column */
+    @keyframes dropZonePulse {
+      0%, 100% {
+        background-color: rgba(16, 185, 129, 0.11);
+        border-color: #059669;
+      }
+      50% {
+        background-color: rgba(14, 165, 233, 0.16);
+        border-color: #0284C7;
+      }
+    }
+
+    .valid-drop-target {
+      animation: dropZonePulse 1s infinite ease-in-out;
+    }
+
+    /* Flying particle animation when merging 10 -> 1 leftwards */
+    @keyframes flyMergeLeft {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+      60% {
+        opacity: 0.95;
+        transform: translate(var(--dx), var(--dy)) scale(0.85);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(1.25);
+      }
+    }
+
+    .flying-merge-counter {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      animation: flyMergeLeft 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Custom subtle scrollbar if many counters are stacked */
+    .counters-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .counters-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .counters-scroll::-webkit-scrollbar-thumb {
+      background: rgba(30, 41, 59, 0.2);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP PRESENTATION TOOLBAR -->
+  <header class="bg-white border-b-2 border-slate-800 px-3 sm:px-5 py-2.5 shadow-sm z-30">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-blue-600 border-2 border-slate-900 flex items-center justify-center text-white font-display font-bold text-lg shadow-sm">
+          10
+        </div>
+        <div>
+          <h1 class="font-display font-bold text-lg sm:text-xl leading-tight text-slate-900 tracking-tight">
+            Place Value Exchange
+          </h1>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 hidden sm:block">
+            Interactive Classroom Chart
+          </p>
+        </div>
+      </div>
+
+      <!-- Column Count Selector (2 to 7 columns) -->
+      <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-300 overflow-x-auto max-w-full" role="group" aria-label="Number of place value columns">
+        <span class="text-xs font-extrabold text-slate-600 px-2 hidden xl:inline">Columns:</span>
+        <div id="column-selector-buttons" class="flex items-center gap-1">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Live Total Banner with Hide/Show Toggle -->
+      <div class="flex items-center gap-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-xl border-2 border-slate-900 shadow-sm">
+        <span class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300">Total:</span>
+        <span id="total-value-display" class="font-display font-bold text-xl sm:text-2xl tracking-wide text-amber-300 min-w-[4.5rem] text-center">
+          1,423
+        </span>
+        <button
+          id="toggle-total-btn"
+          type="button"
+          class="ml-1 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 text-xs font-bold text-white transition cursor-pointer"
+          title="Hide or show total value for class questioning"
+        >
+          <span id="toggle-total-icon" aria-hidden="true">
+            <!-- Eye SVG injected by JS -->
+          </span>
+          <span id="toggle-total-label">Hide Total</span>
+        </button>
+      </div>
+
+      <!-- Utility Actions: Set Number, Sound, Undo, Clear All -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button
+          id="open-number-modal-btn"
+          type="button"
+          class="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-900 border-2 border-slate-800 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+          title="Enter a specific number to display on the chart"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+          </svg>
+          <span>Set Number</span>
+        </button>
+
+        <button
+          id="sound-toggle-btn"
+          type="button"
+          class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 border-2 border-slate-800 transition cursor-pointer"
+          title="Toggle classroom sound effects"
+          aria-label="Toggle sound effects"
+        >
+          <!-- Speaker icon injected by JS -->
+        </button>
+
+        <button
+          id="undo-btn"
+          type="button"
+          disabled
+          class="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 disabled:opacity-40 disabled:pointer-events-none active:scale-95 text-slate-900 border-2 border-slate-800 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
+          title="Undo last action (Ctrl+Z)"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+          </svg>
+          <span>Undo</span>
+        </button>
+
+        <button
+          id="clear-all-btn"
+          type="button"
+          class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-950 border-2 border-slate-800 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
+          title="Clear all counters from the board"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span id="clear-all-label">Clear All</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE PEDAGOGICAL FEEDBACK BANNER -->
+  <div class="px-3 sm:px-6 pt-2.5 pb-1">
+    <div class="max-w-[1600px] mx-auto flex items-center justify-between gap-3">
+      <div
+        id="feedback-banner"
+        class="flex-1 min-h-[38px] px-4 py-1.5 rounded-xl bg-white border border-slate-300 shadow-xs flex items-center justify-center text-center text-xs sm:text-sm md:text-base font-bold text-slate-700 transition-all duration-200"
+      >
+        <span>💡 Drag any counter one column right (or double-tap it) to split <strong>1 → 10</strong>. When a column reaches <strong>10+</strong>, click its flashing header symbol to exchange <strong>10 → 1</strong>!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN PLACE VALUE GRID WORKSPACE -->
+  <main class="flex-1 flex flex-col px-3 sm:px-6 pb-4 pt-1.5 min-h-[460px]">
+    <div
+      id="pv-grid-container"
+      class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col bg-white rounded-2xl pv-table-frame overflow-hidden"
+    >
+      <!-- Columns are rendered dynamically here -->
+    </div>
+  </main>
+
+  <!-- SET NUMBER MODAL (Custom UI - Zero native prompt/alert) -->
+  <div
+    id="number-modal"
+    class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="number-modal-title"
+  >
+    <div class="bg-white rounded-2xl border-2 border-slate-900 shadow-2xl max-w-md w-full p-5 sm:p-6 transform transition-all">
+      <div class="flex items-center justify-between mb-3">
+        <h2 id="number-modal-title" class="font-display font-bold text-xl text-slate-900">
+          Build a Number on the Chart
+        </h2>
+        <button
+          id="close-number-modal-btn"
+          type="button"
+          class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-700 cursor-pointer"
+          aria-label="Close modal"
+        >
+          ✕
+        </button>
+      </div>
+      <p class="text-sm text-slate-600 font-semibold mb-4">
+        Enter a whole number up to <span id="modal-max-hint" class="font-extrabold text-slate-900">9,999</span> to automatically place its counters on the chart.
+      </p>
+      <form id="number-modal-form" class="space-y-4">
+        <div>
+          <input
+            id="number-modal-input"
+            type="number"
+            min="0"
+            max="9999999"
+            step="1"
+            placeholder="e.g. 1423"
+            class="w-full px-4 py-3 text-2xl font-display font-bold text-center tracking-wider rounded-xl border-2 border-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-200 bg-slate-50"
+          />
+          <p id="number-modal-error" class="text-xs font-bold text-rose-600 mt-1.5 hidden"></p>
+        </div>
+
+        <!-- Quick Classroom Preset Numbers -->
+        <div>
+          <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">Quick Examples:</span>
+          <div id="quick-presets-container" class="flex flex-wrap gap-1.5">
+            <!-- Populated dynamically based on column count -->
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            id="cancel-number-modal-btn"
+            class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-sm text-slate-700 border border-slate-300 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 font-bold text-sm text-white border-2 border-slate-900 shadow-xs cursor-pointer"
+          >
+            Place Counters
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FLOATING DRAG GHOST LAYER -->
+  <div id="drag-layer" class="fixed inset-0 pointer-events-none z-50"></div>
+
+  <script>
+    /**
+     * ============================================================================
+     * PLACE VALUE EXCHANGE CHART — CORE APPLICATION LOGIC
+     * ============================================================================
+     * Designed for UK Primary Maths (White Rose Maths visual palette & pedagogy).
+     * Supports 2 to 7 columns (Ones up to Millions), pointer drag-to-split (1 -> 10),
+     * double-tap/tap-to-split accessibility, and flashing header regrouping (10 -> 1).
+     */
+
+    // 1. PLACE VALUE DEFINITIONS (Ordered left-to-right: Millions -> Ones)
+    const PLACE_COLUMNS = [
+      {
+        id: 'millions',
+        name: 'Millions',
+        shortName: 'M',
+        singular: 'Million',
+        plural: 'Millions',
+        value: 1000000,
+        label: '1,000,000',
+        headerBg: '#DDD6FE',
+        counterBg: '#7C3AED'
+      },
+      {
+        id: 'hundredThousands',
+        name: 'Hundred Thousands',
+        shortName: 'HTh',
+        singular: 'Hundred Thousand',
+        plural: 'Hundred Thousands',
+        value: 100000,
+        label: '100,000',
+        headerBg: '#FED7AA',
+        counterBg: '#EA580C'
+      },
+      {
+        id: 'tenThousands',
+        name: 'Ten Thousands',
+        shortName: 'TTh',
+        singular: 'Ten Thousand',
+        plural: 'Ten Thousands',
+        value: 10000,
+        label: '10,000',
+        headerBg: '#FBCFE8',
+        counterBg: '#DB2777'
+      },
+      {
+        id: 'thousands',
+        name: 'Thousands',
+        shortName: 'Th',
+        singular: 'Thousand',
+        plural: 'Thousands',
+        value: 1000,
+        label: '1,000',
+        headerBg: '#BFDBFE',
+        counterBg: '#2563EB'
+      },
+      {
+        id: 'hundreds',
+        name: 'Hundreds',
+        shortName: 'H',
+        singular: 'Hundred',
+        plural: 'Hundreds',
+        value: 100,
+        label: '100',
+        headerBg: '#C5E0B4',
+        counterBg: '#54A847'
+      },
+      {
+        id: 'tens',
+        name: 'Tens',
+        shortName: 'T',
+        singular: 'Ten',
+        plural: 'Tens',
+        value: 10,
+        label: '10',
+        headerBg: '#FFD966',
+        counterBg: '#F5B82E'
+      },
+      {
+        id: 'ones',
+        name: 'Ones',
+        shortName: 'O',
+        singular: 'One',
+        plural: 'Ones',
+        value: 1,
+        label: '1',
+        headerBg: '#FF5252',
+        counterBg: '#E85A44'
+      }
+    ];
+
+    // Column count button presets (2 to 7 columns)
+    const COLUMN_PRESETS = [
+      { count: 2, label: '2 (T–O)' },
+      { count: 3, label: '3 (H–O)' },
+      { count: 4, label: '4 (Th–O)' },
+      { count: 5, label: '5 (TTh–O)' },
+      { count: 6, label: '6 (HTh–O)' },
+      { count: 7, label: '7 (M–O)' }
+    ];
+
+    // 2. APPLICATION STATE
+    const state = {
+      visibleCount: 4, // Default: Thousands, Hundreds, Tens, Ones
+      // Counts stored across all 7 place values [M, HTh, TTh, Th, H, T, O]
+      // Default starting value: 1,423 (matching prompt & reference image colors)
+      counts: [0, 0, 0, 1, 4, 2, 3],
+      hideTotal: false,
+      soundEnabled: true,
+      history: [], // Stack of previous count snapshots for Undo
+      selectedCounter: null, // { colIndex, counterIdx } for accessible tap-to-split
+      recentPopColumn: null, // { colIndex, startIdx, count } for staggered pop-in animation
+      clearConfirmArmed: false,
+      clearConfirmTimer: null,
+      feedbackTimer: null
+    };
+
+    // Active drag tracking object
+    const dragState = {
+      active: false,
+      pointerId: null,
+      sourceColIndex: null,
+      sourceCounterIdx: null,
+      startX: 0,
+      startY: 0,
+      hasMoved: false,
+      ghostEl: null,
+      sourceEl: null,
+      overValidTarget: false,
+      overColIndex: null
+    };
+
+    // 3. SYNTHESIZED WEB AUDIO SOUND EFFECTS (Zero external audio URLs)
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!state.soundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (type === 'pop') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'remove') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(380, now);
+          osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'split') {
+          // Cascading bright chime for 1 -> 10 split
+          const freqs = [523.25, 659.25, 783.99, 1046.5];
+          freqs.forEach((f, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + idx * 0.045);
+            gain.gain.setValueAtTime(0.09, now + idx * 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.045 + 0.16);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.045);
+            osc.stop(now + idx * 0.045 + 0.16);
+          });
+        } else if (type === 'merge') {
+          // Warm rising chord for 10 -> 1 regrouping
+          const freqs = [392.0, 493.88, 587.33, 783.99];
+          freqs.forEach((f, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.03);
+            gain.gain.setValueAtTime(0.1, now + idx * 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.03);
+            osc.stop(now + 0.29);
+          });
+        }
+      } catch (e) {
+        // Ignore audio errors if blocked by browser autoplay policy
+      }
+    }
+
+    // 4. HISTORY & STATE HELPERS
+    function pushHistory() {
+      state.history.push([...state.counts]);
+      if (state.history.length > 40) {
+        state.history.shift();
+      }
+      updateUndoButton();
+    }
+
+    function undoLastAction() {
+      if (state.history.length === 0) return;
+      state.counts = state.history.pop();
+      state.selectedCounter = null;
+      state.recentPopColumn = null;
+      playSound('remove');
+      showFeedback('↩️ Undid the last move.', 'neutral');
+      renderAll();
+    }
+
+    function updateUndoButton() {
+      const undoBtn = document.getElementById('undo-btn');
+      if (undoBtn) {
+        undoBtn.disabled = state.history.length === 0;
+      }
+    }
+
+    function getStartColIndex() {
+      return PLACE_COLUMNS.length - state.visibleCount;
+    }
+
+    function calculateVisibleTotal() {
+      const startIdx = getStartColIndex();
+      let total = 0;
+      for (let i = startIdx; i < PLACE_COLUMNS.length; i++) {
+        total += state.counts[i] * PLACE_COLUMNS[i].value;
+      }
+      return total;
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString('en-GB');
+    }
+
+    // 5. FEEDBACK TOAST BANNER
+    function showFeedback(htmlMessage, tone = 'info') {
+      const banner = document.getElementById('feedback-banner');
+      if (!banner) return;
+
+      clearTimeout(state.feedbackTimer);
+
+      banner.className =
+        'flex-1 min-h-[38px] px-4 py-1.5 rounded-xl border shadow-xs flex items-center justify-center text-center text-xs sm:text-sm md:text-base font-bold transition-all duration-200 ';
+
+      if (tone === 'split') {
+        banner.className += 'bg-sky-50 border-sky-400 text-sky-950';
+      } else if (tone === 'merge') {
+        banner.className += 'bg-emerald-50 border-emerald-500 text-emerald-950';
+      } else if (tone === 'warn') {
+        banner.className += 'bg-amber-50 border-amber-400 text-amber-950';
+      } else {
+        banner.className += 'bg-white border-slate-300 text-slate-700';
+      }
+
+      banner.innerHTML = `<span>${htmlMessage}</span>`;
+
+      if (tone !== 'default') {
+        state.feedbackTimer = setTimeout(() => {
+          banner.className =
+            'flex-1 min-h-[38px] px-4 py-1.5 rounded-xl bg-white border border-slate-300 shadow-xs flex items-center justify-center text-center text-xs sm:text-sm md:text-base font-bold text-slate-700 transition-all duration-200';
+          banner.innerHTML =
+            '<span>💡 Drag any counter one column right (or double-tap it) to split <strong>1 → 10</strong>. When a column reaches <strong>10+</strong>, click its flashing header symbol to exchange <strong>10 → 1</strong>!</span>';
+        }, 4800);
+      }
+    }
+
+    // 6. CORE EXCHANGE & COUNTER OPERATIONS
+    function addCounter(colIndex) {
+      pushHistory();
+      const prevCount = state.counts[colIndex];
+      state.counts[colIndex] += 1;
+      state.selectedCounter = null;
+      state.recentPopColumn = { colIndex, startIdx: prevCount, count: 1 };
+      playSound('pop');
+
+      const col = PLACE_COLUMNS[colIndex];
+      if (state.counts[colIndex] === 10) {
+        showFeedback(
+          `✨ <strong>10 ${col.plural}</strong> reached! Click the flashing <strong>10 → 1</strong> badge in the ${col.name} header to regroup.`,
+          'warn'
+        );
+      }
+      renderAll();
+    }
+
+    function removeCounter(colIndex) {
+      if (state.counts[colIndex] <= 0) return;
+      pushHistory();
+      state.counts[colIndex] -= 1;
+      state.selectedCounter = null;
+      state.recentPopColumn = null;
+      playSound('remove');
+      renderAll();
+    }
+
+    /**
+     * Split 1 counter from colIndex into 10 counters in colIndex + 1 (immediate right)
+     */
+    function splitCounterRight(colIndex) {
+      if (colIndex >= PLACE_COLUMNS.length - 1) {
+        showFeedback('Ones is the smallest column and cannot be split further right.', 'warn');
+        return;
+      }
+      if (state.counts[colIndex] < 1) return;
+
+      pushHistory();
+      const targetColIndex = colIndex + 1;
+      const prevTargetCount = state.counts[targetColIndex];
+
+      state.counts[colIndex] -= 1;
+      state.counts[targetColIndex] += 10;
+      state.selectedCounter = null;
+      state.recentPopColumn = { colIndex: targetColIndex, startIdx: prevTargetCount, count: 10 };
+
+      playSound('split');
+
+      const srcCol = PLACE_COLUMNS[colIndex];
+      const dstCol = PLACE_COLUMNS[targetColIndex];
+      showFeedback(
+        `🔄 Exchanged <strong>1 ${srcCol.singular} (${srcCol.label})</strong> for <strong>10 ${dstCol.plural} (${dstCol.label})</strong>!`,
+        'split'
+      );
+
+      renderAll();
+    }
+
+    /**
+     * Exchange 10 counters from colIndex into 1 counter in colIndex - 1 (immediate left)
+     */
+    function exchangeTenLeft(colIndex, triggerButtonEl = null) {
+      const startIdx = getStartColIndex();
+      if (colIndex <= startIdx) return; // Need a visible column to the left
+      if (state.counts[colIndex] < 10) return;
+
+      const targetColIndex = colIndex - 1;
+
+      // Launch visual flying merge animation from source column to target left column
+      animateMergeLeft(colIndex, targetColIndex, triggerButtonEl);
+
+      pushHistory();
+      const prevTargetCount = state.counts[targetColIndex];
+      state.counts[colIndex] -= 10;
+      state.counts[targetColIndex] += 1;
+      state.selectedCounter = null;
+      state.recentPopColumn = { colIndex: targetColIndex, startIdx: prevTargetCount, count: 1 };
+
+      playSound('merge');
+
+      const srcCol = PLACE_COLUMNS[colIndex];
+      const dstCol = PLACE_COLUMNS[targetColIndex];
+      const remaining = state.counts[colIndex];
+      const extraNote =
+        remaining >= 10
+          ? ` (${remaining} ${srcCol.plural} remaining — click again to exchange another 10!)`
+          : '';
+
+      showFeedback(
+        `⬅️ Exchanged <strong>10 ${srcCol.plural} (${srcCol.label})</strong> for <strong>1 ${dstCol.singular} (${dstCol.label})</strong>!${extraNote}`,
+        'merge'
+      );
+
+      renderAll();
+    }
+
+    /**
+     * Creates a brief flying counter particle moving from the source column to the target left column
+     */
+    function animateMergeLeft(srcColIndex, dstColIndex, triggerEl) {
+      try {
+        const srcColEl = document.querySelector(`[data-col-body="${srcColIndex}"]`);
+        const dstColEl = document.querySelector(`[data-col-body="${dstColIndex}"]`);
+        if (!srcColEl || !dstColEl) return;
+
+        const srcRect = triggerEl ? triggerEl.getBoundingClientRect() : srcColEl.getBoundingClientRect();
+        const dstRect = dstColEl.getBoundingClientRect();
+
+        const startX = srcRect.left + srcRect.width / 2 - 24;
+        const startY = srcRect.top + srcRect.height / 2 - 24;
+        const endX = dstRect.left + dstRect.width / 2 - 24;
+        const endY = dstRect.top + Math.min(dstRect.height * 0.35, 110);
+
+        const dstCol = PLACE_COLUMNS[dstColIndex];
+        const particle = document.createElement('div');
+        particle.className = 'pv-counter flying-merge-counter';
+        particle.style.width = '48px';
+        particle.style.height = '48px';
+        particle.style.left = `${startX}px`;
+        particle.style.top = `${startY}px`;
+        particle.style.backgroundColor = dstCol.counterBg;
+        particle.style.fontSize = dstCol.label.length >= 6 ? '10px' : dstCol.label.length >= 4 ? '13px' : '16px';
+        particle.style.setProperty('--dx', `${endX - startX}px`);
+        particle.style.setProperty('--dy', `${endY - startY}px`);
+        particle.textContent = dstCol.label;
+
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 520);
+      } catch (e) {
+        // Non-critical visual effect
+      }
+    }
+
+    function setVisibleColumns(newCount) {
+      if (newCount < 2 || newCount > 7) return;
+      state.visibleCount = newCount;
+      state.selectedCounter = null;
+      state.recentPopColumn = null;
+      renderAll();
+    }
+
+    function expandOneColumnLeft() {
+      if (state.visibleCount < 7) {
+        const nextCol = PLACE_COLUMNS[PLACE_COLUMNS.length - (state.visibleCount + 1)];
+        setVisibleColumns(state.visibleCount + 1);
+        showFeedback(`➕ Added the <strong>${nextCol.name}</strong> column! Now click the flashing <strong>10 → 1</strong> symbol to exchange.`, 'info');
+      }
+    }
+
+    // 7. POINTER EVENTS DRAG-AND-DROP (Works on Interactive Whiteboards, Touch & Mouse)
+    function handleCounterPointerDown(e, colIndex, counterIdx, counterEl) {
+      // Only primary mouse button or touch/pen
+      if (e.button !== undefined && e.button !== 0) return;
+
+      // Unlock audio context on first user gesture
+      getAudioContext();
+
+      // If this is the Ones column (rightmost), it cannot move further right
+      if (colIndex >= PLACE_COLUMNS.length - 1) {
+        showFeedback('Ones is the rightmost column — counters here cannot split further right.', 'warn');
+        return;
+      }
+
+      e.preventDefault();
+
+      dragState.active = true;
+      dragState.pointerId = e.pointerId;
+      dragState.sourceColIndex = colIndex;
+      dragState.sourceCounterIdx = counterIdx;
+      dragState.startX = e.clientX;
+      dragState.startY = e.clientY;
+      dragState.hasMoved = false;
+      dragState.sourceEl = counterEl;
+      dragState.overValidTarget = false;
+      dragState.overColIndex = null;
+
+      window.addEventListener('pointermove', handleGlobalPointerMove, { passive: false });
+      window.addEventListener('pointerup', handleGlobalPointerUp);
+      window.addEventListener('pointercancel', handleGlobalPointerCancel);
+    }
+
+    function createDragGhost(colIndex, x, y) {
+      const col = PLACE_COLUMNS[colIndex];
+      const ghost = document.createElement('div');
+      ghost.className = 'pv-counter shadow-2xl';
+      const size = 62;
+      ghost.style.width = `${size}px`;
+      ghost.style.height = `${size}px`;
+      ghost.style.backgroundColor = col.counterBg;
+      ghost.style.fontSize = col.label.length >= 7 ? '11px' : col.label.length >= 5 ? '13px' : '18px';
+      ghost.style.position = 'fixed';
+      ghost.style.left = '0px';
+      ghost.style.top = '0px';
+      ghost.style.transform = `translate3d(${x - size / 2}px, ${y - size / 2}px, 0) scale(1.12)`;
+      ghost.style.zIndex = '9999';
+      ghost.style.pointerEvents = 'none';
+      ghost.textContent = col.label;
+
+      // Small "1 → 10" badge attached to dragged counter
+      const badge = document.createElement('span');
+      badge.className =
+        'absolute -top-2.5 -right-3 px-1.5 py-0.5 rounded-full bg-slate-900 text-amber-300 text-[10px] font-extrabold border border-white shadow';
+      badge.textContent = '1→10';
+      ghost.appendChild(badge);
+
+      document.getElementById('drag-layer').appendChild(ghost);
+      return ghost;
+    }
+
+    function highlightDropZones(targetRightColIndex, hoveredColIndex) {
+      const allBodies = document.querySelectorAll('[data-col-body]');
+      allBodies.forEach((bodyEl) => {
+        const idx = Number(bodyEl.getAttribute('data-col-body'));
+        const overlay = bodyEl.querySelector('.drop-zone-overlay');
+        if (!overlay) return;
+
+        if (idx === targetRightColIndex) {
+          overlay.classList.remove('hidden');
+          overlay.classList.add('flex');
+          if (hoveredColIndex === targetRightColIndex) {
+            overlay.classList.add('ring-4', 'ring-emerald-500', 'bg-emerald-100/80');
+          } else {
+            overlay.classList.remove('ring-4', 'ring-emerald-500', 'bg-emerald-100/80');
+          }
+        } else {
+          overlay.classList.add('hidden');
+          overlay.classList.remove('flex', 'ring-4', 'ring-emerald-500', 'bg-emerald-100/80');
+        }
+      });
+    }
+
+    function clearDropZones() {
+      const overlays = document.querySelectorAll('.drop-zone-overlay');
+      overlays.forEach((overlay) => {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex', 'ring-4', 'ring-emerald-500', 'bg-emerald-100/80');
+      });
+    }
+
+    function handleGlobalPointerMove(e) {
+      if (!dragState.active || e.pointerId !== dragState.pointerId) return;
+      e.preventDefault();
+
+      const dx = e.clientX - dragState.startX;
+      const dy = e.clientY - dragState.startY;
+      const dist = Math.hypot(dx, dy);
+
+      // Start visual drag once pointer moves beyond a small 6px tap threshold
+      if (!dragState.hasMoved && dist > 6) {
+        dragState.hasMoved = true;
+        state.selectedCounter = null;
+        if (dragState.sourceEl) {
+          dragState.sourceEl.classList.add('is-dragging-source');
+        }
+        dragState.ghostEl = createDragGhost(dragState.sourceColIndex, e.clientX, e.clientY);
+      }
+
+      if (dragState.hasMoved && dragState.ghostEl) {
+        const size = 62;
+        dragState.ghostEl.style.transform = `translate3d(${e.clientX - size / 2}px, ${e.clientY - size / 2}px, 0) scale(1.12)`;
+
+        // Detect which column is directly under the pointer
+        const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+        const colWrapper = elemBelow ? elemBelow.closest('[data-col-wrapper]') : null;
+        const hoveredColIdx = colWrapper ? Number(colWrapper.getAttribute('data-col-wrapper')) : null;
+        const validRightIdx = dragState.sourceColIndex + 1;
+
+        dragState.overColIndex = hoveredColIdx;
+        dragState.overValidTarget = hoveredColIdx === validRightIdx;
+
+        highlightDropZones(validRightIdx, hoveredColIdx);
+      }
+    }
+
+    function cleanupDrag() {
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerCancel);
+
+      if (dragState.ghostEl) {
+        dragState.ghostEl.remove();
+        dragState.ghostEl = null;
+      }
+      if (dragState.sourceEl) {
+        dragState.sourceEl.classList.remove('is-dragging-source');
+        dragState.sourceEl = null;
+      }
+      clearDropZones();
+      dragState.active = false;
+      dragState.pointerId = null;
+    }
+
+    function handleGlobalPointerUp(e) {
+      if (!dragState.active || e.pointerId !== dragState.pointerId) return;
+
+      const wasMoved = dragState.hasMoved;
+      const srcColIdx = dragState.sourceColIndex;
+      const srcCounterIdx = dragState.sourceCounterIdx;
+      const isValidDrop = dragState.overValidTarget;
+      const hoveredCol = dragState.overColIndex;
+
+      cleanupDrag();
+
+      if (wasMoved) {
+        if (isValidDrop) {
+          splitCounterRight(srcColIdx);
+        } else if (hoveredCol !== null && hoveredCol !== srcColIdx) {
+          const targetCol = PLACE_COLUMNS[srcColIdx + 1];
+          showFeedback(
+            `👉 Drop into the <strong>${targetCol.name}</strong> column right next door to split <strong>1 → 10</strong>.`,
+            'warn'
+          );
+        }
+      } else {
+        // Treated as a clean tap/click: toggle selection pill for accessible one-tap splitting
+        if (
+          state.selectedCounter &&
+          state.selectedCounter.colIndex === srcColIdx &&
+          state.selectedCounter.counterIdx === srcCounterIdx
+        ) {
+          state.selectedCounter = null;
+        } else {
+          state.selectedCounter = { colIndex: srcColIdx, counterIdx: srcCounterIdx };
+        }
+        renderGrid();
+      }
+    }
+
+    function handleGlobalPointerCancel(e) {
+      if (!dragState.active || e.pointerId !== dragState.pointerId) return;
+      cleanupDrag();
+    }
+
+    // 8. RESPONSIVE COUNTER SIZING CALCULATOR
+    function computeCounterDiameter(colWidth, colHeight, count) {
+      // Base size scales cleanly with column width and total items
+      const maxFromWidth = Math.floor((colWidth - 28) / 2.35);
+      let size = Math.min(72, Math.max(34, maxFromWidth));
+
+      if (count > 10 && count <= 20) {
+        size = Math.min(size, 52);
+      } else if (count > 20 && count <= 30) {
+        size = Math.min(size, 42);
+      } else if (count > 30) {
+        size = Math.min(size, 36);
+      }
+
+      // Also ensure vertical fit for up to 10 counters (5 rows) without scrolling
+      if (colHeight > 160 && count <= 10) {
+        const maxFromHeight = Math.floor((colHeight - 36) / 5.6);
+        size = Math.min(size, Math.max(38, maxFromHeight));
+      }
+
+      return Math.max(32, size);
+    }
+
+    function getCounterFontSize(diameter, label) {
+      const len = label.length;
+      if (len >= 9) return `${Math.max(9, Math.floor(diameter * 0.21))}px`; // "1,000,000"
+      if (len >= 7) return `${Math.max(10, Math.floor(diameter * 0.25))}px`; // "100,000"
+      if (len >= 6) return `${Math.max(11, Math.floor(diameter * 0.28))}px`; // "10,000"
+      if (len >= 5) return `${Math.max(12, Math.floor(diameter * 0.31))}px`; // "1,000"
+      if (len === 3) return `${Math.max(13, Math.floor(diameter * 0.37))}px`; // "100"
+      return `${Math.max(15, Math.floor(diameter * 0.44))}px`; // "10" or "1"
+    }
+
+    // 9. RENDERING FUNCTIONS
+    function renderToolbar() {
+      // Render 2..7 column selector buttons
+      const selectorContainer = document.getElementById('column-selector-buttons');
+      if (selectorContainer) {
+        selectorContainer.innerHTML = '';
+        COLUMN_PRESETS.forEach((preset) => {
+          const isActive = state.visibleCount === preset.count;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = preset.label;
+          btn.className = isActive
+            ? 'px-2.5 py-1.5 rounded-lg bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-xs transition cursor-pointer whitespace-nowrap'
+            : 'px-2.5 py-1.5 rounded-lg bg-transparent hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition cursor-pointer whitespace-nowrap';
+          btn.addEventListener('click', () => setVisibleColumns(preset.count));
+          selectorContainer.appendChild(btn);
+        });
+      }
+
+      // Render Live Total & Hide/Show Toggle
+      const totalDisplay = document.getElementById('total-value-display');
+      const toggleIcon = document.getElementById('toggle-total-icon');
+      const toggleLabel = document.getElementById('toggle-total-label');
+
+      if (totalDisplay) {
+        if (state.hideTotal) {
+          totalDisplay.textContent = '••••';
+          totalDisplay.classList.remove('text-amber-300');
+          totalDisplay.classList.add('text-slate-400');
+        } else {
+          totalDisplay.textContent = formatNumber(calculateVisibleTotal());
+          totalDisplay.classList.add('text-amber-300');
+          totalDisplay.classList.remove('text-slate-400');
+        }
+      }
+
+      if (toggleIcon && toggleLabel) {
+        if (state.hideTotal) {
+          toggleLabel.textContent = 'Show Total';
+          toggleIcon.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>`;
+        } else {
+          toggleLabel.textContent = 'Hide Total';
+          toggleIcon.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>`;
+        }
+      }
+
+      // Render Sound button icon
+      const soundBtn = document.getElementById('sound-toggle-btn');
+      if (soundBtn) {
+        soundBtn.innerHTML = state.soundEnabled
+          ? `<svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+             </svg>`
+          : `<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+             </svg>`;
+      }
+
+      updateUndoButton();
+    }
+
+    function renderGrid() {
+      const gridContainer = document.getElementById('pv-grid-container');
+      if (!gridContainer) return;
+
+      const startIdx = getStartColIndex();
+      const activeColumns = PLACE_COLUMNS.slice(startIdx);
+
+      // Estimate available dimensions for responsive counter sizing
+      const containerRect = gridContainer.getBoundingClientRect();
+      const approxColWidth = (containerRect.width || window.innerWidth - 48) / activeColumns.length;
+      const approxBodyHeight = Math.max(260, (containerRect.height || 520) - 135);
+
+      gridContainer.innerHTML = '';
+
+      // Create horizontal flex/grid wrapper
+      const columnsRow = document.createElement('div');
+      columnsRow.className = 'flex-1 grid w-full';
+      columnsRow.style.gridTemplateColumns = `repeat(${activeColumns.length}, minmax(0, 1fr))`;
+
+      activeColumns.forEach((col, localIdx) => {
+        const globalColIdx = startIdx + localIdx;
+        const count = state.counts[globalColIdx];
+        const canMoveRight = globalColIdx < PLACE_COLUMNS.length - 1;
+        const hasLeftColumn = localIdx > 0;
+        const canExpandLeft = localIdx === 0 && state.visibleCount < 7;
+
+        const colWrapper = document.createElement('div');
+        colWrapper.className = 'flex flex-col min-w-0 pv-col-divider relative';
+        colWrapper.setAttribute('data-col-wrapper', String(globalColIdx));
+
+        // ------------------------------------------------------------------
+        // A. COLUMN HEADER (White Rose Maths Colored Header + Flashing 10->1)
+        // ------------------------------------------------------------------
+        const header = document.createElement('div');
+        header.className =
+          'pv-header-divider px-1.5 sm:px-3 py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative min-h-[76px] sm:min-h-[88px] transition-colors';
+        header.style.backgroundColor = col.headerBg;
+
+        // Column Title
+        const titleEl = document.createElement('div');
+        titleEl.className =
+          'font-display font-bold text-slate-950 text-center leading-tight tracking-tight ' +
+          (activeColumns.length >= 6
+            ? 'text-sm sm:text-base md:text-lg lg:text-xl'
+            : activeColumns.length === 5
+            ? 'text-base sm:text-xl lg:text-2xl'
+            : 'text-lg sm:text-2xl lg:text-3xl');
+        titleEl.textContent = col.name;
+        header.appendChild(titleEl);
+
+        // Flashing Exchange Left Badge (appears whenever count >= 10 and a left column exists!)
+        if (count >= 10 && hasLeftColumn) {
+          const leftCol = PLACE_COLUMNS[globalColIdx - 1];
+          const exchangeBtn = document.createElement('button');
+          exchangeBtn.type = 'button';
+          exchangeBtn.className =
+            'exchange-flash-btn mt-1.5 px-2.5 sm:px-3 py-1 rounded-full border-2 border-slate-900 font-display font-bold text-xs sm:text-sm text-slate-950 flex items-center gap-1 cursor-pointer z-20';
+          exchangeBtn.title = `Exchange 10 ${col.plural} for 1 ${leftCol.singular}`;
+          exchangeBtn.innerHTML = `
+            <span class="exchange-arrow-nudge">⬅</span>
+            <span>10 → 1</span>
+          `;
+          exchangeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exchangeTenLeft(globalColIdx, exchangeBtn);
+          });
+          header.appendChild(exchangeBtn);
+        } else if (count >= 10 && canExpandLeft) {
+          // Leftmost visible column reached 10+ and more columns exist up to Millions
+          const leftCol = PLACE_COLUMNS[globalColIdx - 1];
+          const expandBtn = document.createElement('button');
+          expandBtn.type = 'button';
+          expandBtn.className =
+            'exchange-flash-btn mt-1.5 px-2.5 py-1 rounded-full border-2 border-slate-900 font-display font-bold text-xs sm:text-sm text-slate-950 flex items-center gap-1 cursor-pointer z-20';
+          expandBtn.title = `Add ${leftCol.name} column so you can exchange 10 → 1`;
+          expandBtn.innerHTML = `<span>+ ${leftCol.shortName}</span>`;
+          expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            expandOneColumnLeft();
+          });
+          header.appendChild(expandBtn);
+        }
+
+        colWrapper.appendChild(header);
+
+        // ------------------------------------------------------------------
+        // B. COLUMN COUNTERS BODY (Tens-Frame 2-Column Grouping)
+        // ------------------------------------------------------------------
+        const body = document.createElement('div');
+        body.className =
+          'flex-1 bg-white p-2 sm:p-3.5 flex flex-col items-center justify-start relative overflow-y-auto counters-scroll min-h-[260px]';
+        body.setAttribute('data-col-body', String(globalColIdx));
+
+        // Drop Zone Overlay (shown when dragging from immediate left column)
+        const targetColRight = PLACE_COLUMNS[globalColIdx];
+        const dropOverlay = document.createElement('div');
+        dropOverlay.className =
+          'drop-zone-overlay hidden absolute inset-2 rounded-xl border-3 border-dashed border-emerald-600 valid-drop-target z-30 flex-col items-center justify-center p-2 text-center pointer-events-none';
+        dropOverlay.innerHTML = `
+          <div class="bg-white/95 px-3 py-2 rounded-xl border-2 border-emerald-600 shadow-md">
+            <div class="font-display font-bold text-emerald-800 text-sm sm:text-base">
+              Drop to exchange 1 → 10
+            </div>
+            <div class="text-xs font-bold text-slate-600 mt-0.5">
+              Splits into ten ${targetColRight.label}s
+            </div>
+          </div>
+        `;
+        body.appendChild(dropOverlay);
+
+        // Render Counters grouped into Tens Frames (groups of 10 in a 2-column grid)
+        const diameter = computeCounterDiameter(approxColWidth, approxBodyHeight, count);
+        const fontSize = getCounterFontSize(diameter, col.label);
+
+        if (count === 0) {
+          const emptyHint = document.createElement('div');
+          emptyHint.className = 'my-auto text-slate-300 font-display font-bold text-sm sm:text-base select-none';
+          emptyHint.textContent = '0';
+          body.appendChild(emptyHint);
+        } else {
+          const framesWrapper = document.createElement('div');
+          framesWrapper.className = 'flex flex-col items-center gap-3 w-full my-auto py-1';
+
+          // Chunk counters into groups of 10 so pupils can easily subitise tens frames
+          const numGroups = Math.ceil(count / 10);
+          for (let g = 0; g < numGroups; g++) {
+            const groupStart = g * 10;
+            const groupEnd = Math.min(count, groupStart + 10);
+
+            if (g > 0) {
+              // Subtle dashed divider between full tens frames and extra counters
+              const divider = document.createElement('div');
+              divider.className = 'w-4/5 border-t-2 border-dashed border-slate-200 my-0.5';
+              framesWrapper.appendChild(divider);
+            }
+
+            const tensGrid = document.createElement('div');
+            tensGrid.className = 'grid grid-cols-2 place-items-center';
+            tensGrid.style.gap = diameter >= 52 ? '10px 14px' : '6px 8px';
+
+            for (let idx = groupStart; idx < groupEnd; idx++) {
+              const counterEl = document.createElement('div');
+              counterEl.className = 'pv-counter' + (canMoveRight ? ' can-drag' : '');
+              counterEl.style.width = `${diameter}px`;
+              counterEl.style.height = `${diameter}px`;
+              counterEl.style.backgroundColor = col.counterBg;
+              counterEl.style.fontSize = fontSize;
+              counterEl.textContent = col.label;
+
+              // Pop-in animation for newly added or split counters
+              if (
+                state.recentPopColumn &&
+                state.recentPopColumn.colIndex === globalColIdx &&
+                idx >= state.recentPopColumn.startIdx &&
+                idx < state.recentPopColumn.startIdx + state.recentPopColumn.count
+              ) {
+                const stagger = (idx - state.recentPopColumn.startIdx) * 24;
+                counterEl.classList.add('animate-pop-in');
+                counterEl.style.animationDelay = `${stagger}ms`;
+              }
+
+              // Accessible tap selection state
+              const isSelected =
+                state.selectedCounter &&
+                state.selectedCounter.colIndex === globalColIdx &&
+                state.selectedCounter.counterIdx === idx;
+
+              if (isSelected && canMoveRight) {
+                counterEl.classList.add('is-selected');
+                const splitPill = document.createElement('button');
+                splitPill.type = 'button';
+                splitPill.className =
+                  'absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-sky-600 text-white text-[11px] font-extrabold border border-white shadow-lg z-40 cursor-pointer';
+                splitPill.textContent = 'Split 1→10 ➔';
+                splitPill.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+                splitPill.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  splitCounterRight(globalColIdx);
+                });
+                counterEl.appendChild(splitPill);
+              }
+
+              // Double-click / double-tap quick split alternative
+              if (canMoveRight) {
+                counterEl.addEventListener('dblclick', (ev) => {
+                  ev.stopPropagation();
+                  splitCounterRight(globalColIdx);
+                });
+              }
+
+              // Custom Pointer Events Drag-and-Drop
+              counterEl.addEventListener('pointerdown', (ev) =>
+                handleCounterPointerDown(ev, globalColIdx, idx, counterEl)
+              );
+
+              tensGrid.appendChild(counterEl);
+            }
+
+            framesWrapper.appendChild(tensGrid);
+          }
+
+          body.appendChild(framesWrapper);
+        }
+
+        colWrapper.appendChild(body);
+
+        // ------------------------------------------------------------------
+        // C. COLUMN FOOTER CONTROLS (−, Count Digit Indicator, +)
+        // ------------------------------------------------------------------
+        const footer = document.createElement('div');
+        footer.className =
+          'pv-footer-divider bg-slate-50 px-2 py-2 sm:py-2.5 flex items-center justify-between gap-1.5';
+
+        // Minus Button
+        const minusBtn = document.createElement('button');
+        minusBtn.type = 'button';
+        minusBtn.disabled = count === 0;
+        minusBtn.className =
+          'w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white hover:bg-rose-50 active:scale-95 disabled:opacity-35 disabled:pointer-events-none border-2 border-slate-800 font-display font-bold text-xl sm:text-2xl text-slate-900 flex items-center justify-center shadow-2xs transition cursor-pointer';
+        minusBtn.setAttribute('aria-label', `Remove one ${col.singular}`);
+        minusBtn.textContent = '−';
+        minusBtn.addEventListener('click', () => removeCounter(globalColIdx));
+
+        // Digit Count Indicator Pill
+        const countBadge = document.createElement('div');
+        countBadge.className =
+          'px-2.5 py-1 rounded-lg font-display font-bold text-base sm:text-xl min-w-[2.4rem] text-center transition-colors ' +
+          (count >= 10
+            ? 'bg-amber-200 text-slate-950 border-2 border-slate-900'
+            : 'bg-slate-200/75 text-slate-800');
+        countBadge.title = `${count} ${count === 1 ? col.singular : col.plural}`;
+        countBadge.textContent = String(count);
+
+        // Plus Button
+        const plusBtn = document.createElement('button');
+        plusBtn.type = 'button';
+        plusBtn.className =
+          'w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white hover:bg-emerald-50 active:scale-95 border-2 border-slate-800 font-display font-bold text-xl sm:text-2xl text-slate-900 flex items-center justify-center shadow-2xs transition cursor-pointer';
+        plusBtn.setAttribute('aria-label', `Add one ${col.singular}`);
+        plusBtn.textContent = '+';
+        plusBtn.addEventListener('click', () => addCounter(globalColIdx));
+
+        footer.appendChild(minusBtn);
+        footer.appendChild(countBadge);
+        footer.appendChild(plusBtn);
+
+        colWrapper.appendChild(footer);
+        columnsRow.appendChild(colWrapper);
+      });
+
+      gridContainer.appendChild(columnsRow);
+
+      // Reset one-shot pop animation tracker after initial paint
+      state.recentPopColumn = null;
+    }
+
+    function renderAll() {
+      renderToolbar();
+      renderGrid();
+    }
+
+    // 10. SET NUMBER MODAL & TOOLBAR EVENT WIRING
+    function openNumberModal() {
+      const modal = document.getElementById('number-modal');
+      const input = document.getElementById('number-modal-input');
+      const maxHint = document.getElementById('modal-max-hint');
+      const presetsContainer = document.getElementById('quick-presets-container');
+      const errorEl = document.getElementById('number-modal-error');
+
+      const maxVal = Math.pow(10, state.visibleCount) - 1;
+      maxHint.textContent = formatNumber(maxVal);
+      input.max = String(maxVal);
+      input.value = String(calculateVisibleTotal());
+      errorEl.classList.add('hidden');
+
+      // Generate helpful classroom presets tailored to active column count
+      const presetsByCols = {
+        2: [14, 29, 40, 65, 99],
+        3: [125, 240, 308, 423, 999],
+        4: [1423, 2050, 3419, 5004, 9999],
+        5: [12450, 20308, 45120, 70005],
+        6: [142350, 305020, 650412],
+        7: [1250400, 3042015, 5432198]
+      };
+
+      presetsContainer.innerHTML = '';
+      (presetsByCols[state.visibleCount] || [1423]).forEach((num) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className =
+          'px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-800 font-display font-bold text-xs border border-slate-300 cursor-pointer';
+        chip.textContent = formatNumber(num);
+        chip.addEventListener('click', () => {
+          input.value = String(num);
+          errorEl.classList.add('hidden');
+        });
+        presetsContainer.appendChild(chip);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 40);
+    }
+
+    function closeNumberModal() {
+      const modal = document.getElementById('number-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function applyNumberToChart(num) {
+      pushHistory();
+      const startIdx = getStartColIndex();
+      let remainder = num;
+
+      // Clear all columns first, then decompose across visible place values
+      state.counts = [0, 0, 0, 0, 0, 0, 0];
+      for (let i = startIdx; i < PLACE_COLUMNS.length; i++) {
+        const placeVal = PLACE_COLUMNS[i].value;
+        const digit = Math.floor(remainder / placeVal);
+        state.counts[i] = digit;
+        remainder = remainder % placeVal;
+      }
+
+      state.selectedCounter = null;
+      state.recentPopColumn = null;
+      playSound('split');
+      showFeedback(`🔢 Built <strong>${formatNumber(num)}</strong> on the place value chart.`, 'info');
+      renderAll();
+    }
+
+    // Wire up toolbar buttons on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Hide / Show Total toggle
+      document.getElementById('toggle-total-btn').addEventListener('click', () => {
+        state.hideTotal = !state.hideTotal;
+        renderToolbar();
+      });
+
+      // Sound toggle
+      document.getElementById('sound-toggle-btn').addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        if (state.soundEnabled) {
+          getAudioContext();
+          playSound('pop');
+        }
+        renderToolbar();
+      });
+
+      // Undo button
+      document.getElementById('undo-btn').addEventListener('click', undoLastAction);
+
+      // Two-tap safe Clear All button (never uses native confirm())
+      const clearBtn = document.getElementById('clear-all-btn');
+      const clearLabel = document.getElementById('clear-all-label');
+      clearBtn.addEventListener('click', () => {
+        if (calculateVisibleTotal() === 0 && state.counts.every((c) => c === 0)) {
+          showFeedback('The chart is already empty.', 'neutral');
+          return;
+        }
+
+        if (!state.clearConfirmArmed) {
+          state.clearConfirmArmed = true;
+          clearLabel.textContent = 'Confirm Clear?';
+          clearBtn.classList.remove('bg-rose-100', 'text-rose-950');
+          clearBtn.classList.add('bg-rose-600', 'text-white');
+
+          clearTimeout(state.clearConfirmTimer);
+          state.clearConfirmTimer = setTimeout(() => {
+            state.clearConfirmArmed = false;
+            clearLabel.textContent = 'Clear All';
+            clearBtn.classList.add('bg-rose-100', 'text-rose-950');
+            clearBtn.classList.remove('bg-rose-600', 'text-white');
+          }, 3000);
+        } else {
+          clearTimeout(state.clearConfirmTimer);
+          state.clearConfirmArmed = false;
+          clearLabel.textContent = 'Clear All';
+          clearBtn.classList.add('bg-rose-100', 'text-rose-950');
+          clearBtn.classList.remove('bg-rose-600', 'text-white');
+
+          pushHistory();
+          state.counts = [0, 0, 0, 0, 0, 0, 0];
+          state.selectedCounter = null;
+          state.recentPopColumn = null;
+          playSound('remove');
+          showFeedback('🧹 Cleared all counters from the chart. Click <strong>Undo</strong> to restore.', 'neutral');
+          renderAll();
+        }
+      });
+
+      // Set Number Modal wiring
+      document.getElementById('open-number-modal-btn').addEventListener('click', openNumberModal);
+      document.getElementById('close-number-modal-btn').addEventListener('click', closeNumberModal);
+      document.getElementById('cancel-number-modal-btn').addEventListener('click', closeNumberModal);
+
+      document.getElementById('number-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'number-modal') closeNumberModal();
+      });
+
+      document.getElementById('number-modal-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('number-modal-input');
+        const errorEl = document.getElementById('number-modal-error');
+        const maxVal = Math.pow(10, state.visibleCount) - 1;
+        const parsed = parseInt(input.value, 10);
+
+        if (isNaN(parsed) || parsed < 0 || parsed > maxVal) {
+          errorEl.textContent = `Please enter a whole number between 0 and ${formatNumber(maxVal)}.`;
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        closeNumberModal();
+        applyNumberToChart(parsed);
+      });
+
+      // Keyboard shortcuts: Ctrl+Z / Cmd+Z for Undo, Escape to close modal / deselect
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          undoLastAction();
+        } else if (e.key === 'Escape') {
+          closeNumberModal();
+          if (state.selectedCounter) {
+            state.selectedCounter = null;
+            renderGrid();
+          }
+        }
+      });
+
+      // Recompute counter diameters smoothly on window resize
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          renderGrid();
+        }, 80);
+      });
+
+      // Initial render
+      renderAll();
+    });
+  </script>
+</body>
+</html>
